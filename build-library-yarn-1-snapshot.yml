@@ -1,0 +1,45 @@
+variables:
+  # Ability to override build image
+  BUILD_LIBRARY_NODE_14_IMAGE: ${NODE_14_IMAGE}
+
+image: ${BUILD_LIBRARY_NODE_14_IMAGE}
+
+snapshot:branch:build:
+  stage: build
+  only:
+    - branches
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.imgaddons, install_jq]
+    - !reference [.functions, eval_project_version]
+    - LIBRARY_NAME=$(jq --raw-output '.name' package.json)
+    - yarn config set '${NPM_REGISTRY}:_authToken' "${NPM_TOKEN}"
+    - yarn login --registry=${NPM_REGISTRY}
+    - yarn install
+    - yarn publish --tag "${PROJECT_VERSION}-snapshot"
+    - NPM_PACK_NORMALIZED_LIBRARY_NAME=$(echo "${LIBRARY_NAME}" | sed 's/@//g' | sed 's/\//-/g')
+    - mkdir artifacts && mv "${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}-snapshot-${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}.tgz" "artifacts/${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}-snapshot-${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}.tgz"
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day
+
+snapshot:tag:build:
+  stage: build
+  only:
+    - tags
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.imgaddons, install_jq]
+    - !reference [.functions, eval_project_version]
+    - !reference [.functions, verify_project_version_against_tag]
+    - LIBRARY_NAME=$(jq --raw-output '.name' package.json)
+    - yarn install --cache-folder .yarn
+    - yarn login
+    - yarn publish --tag "${PROJECT_VERSION}-snapshot"
+    - NPM_PACK_NORMALIZED_LIBRARY_NAME=$(echo "${LIBRARY_NAME}" | sed 's/@//g' | sed 's/\//-/g')
+    - mkdir artifacts && mv "${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}-snapshot.tgz"  "artifacts/${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}-snapshot.tgz"
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day

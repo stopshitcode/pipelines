@@ -1,0 +1,36 @@
+variables:
+  # Ability to override publish image
+  PUBLISH_LIBRARY_NODE_14_IMAGE: ${NODE_14_IMAGE}
+
+image: ${PUBLISH_LIBRARY_NODE_14_IMAGE}
+
+snapshot:branch:publish:
+  stage: publish
+  dependencies:
+    - snapshot:branch:build
+  only:
+    - branches
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.imgaddons, install_jq]
+    - !reference [.functions, eval_project_version]
+    - LIBRARY_NAME=$(jq --raw-output '.name' package.json)
+    - NPM_PACK_NORMALIZED_LIBRARY_NAME=$(echo "${LIBRARY_NAME}" | sed 's/@//g' | sed 's/\//-/g')
+    - echo "Not supported yet" >&2
+    - exit 1
+
+
+snapshot:tag:publish:
+  stage: publish
+  dependencies:
+    - snapshot:tag:build
+  only:
+    - tags
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.imgaddons, install_jq]
+    - !reference [.functions, eval_project_version]
+    - LIBRARY_NAME=$(jq --raw-output '.name' package.json)
+    - NPM_PACK_NORMALIZED_LIBRARY_NAME=$(echo "${LIBRARY_NAME}" | sed 's/@//g' | sed 's/\//-/g')
+    - echo "Not supported yet" >&2
+    - exit 1
