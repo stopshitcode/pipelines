@@ -1,0 +1,33 @@
+pages:
+  stage: deploy
+  only:
+    - master
+  dependencies:
+    - snapshot-mockup:branch:build
+  image:
+    name: docker:stable
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - export VERSION_TAG_CURRENT="${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}"
+    # Login to DEV registry
+    - mkdir -p "/etc/docker/certs.d/${DEV_REGISTRY_HOST}"
+    - echo "${DEV_REGISTRY_CA}" > "/etc/docker/certs.d/${DEV_REGISTRY_HOST}/ca.crt"
+    - echo "${DEV_REGISTRY_PASSWORD}" | docker login --username "${DEV_REGISTRY_USER}" --password-stdin "${DEV_REGISTRY_HOST}"
+    # Cleanup
+    - test -d public && rm -rf public
+    # Grab image content
+    - export DOCKER_IMAGE_REPOSITORY="${DEV_REGISTRY_HOST}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/snapshot-mockup/amd64"
+    - IMAGE="${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_CURRENT}"
+    - echo "Create a container to grab content of image '${IMAGE}'"
+    - docker pull "${IMAGE}"
+    - CONTAINER_ID=$(docker create ${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_CURRENT})
+    - docker cp ${CONTAINER_ID}:/usr/local/cexiolabs/${CI_PROJECT_NAMESPACE}.${CI_PROJECT_NAME} public
+    - docker rm -v ${CONTAINER_ID}
+    - sed -i "s~<base href=\"/\"\s*/>~<base href=\"/${CI_PROJECT_NAME}/\"/>~g" public/index.html
+    - sed -i "s~var pathSegmentsToKeep = 0~var pathSegmentsToKeep = 1~g" public/404.html
+    - echo "See $CI_PAGES_URL/"
+    - ls -l public/
+  artifacts:
+    paths:
+      - public

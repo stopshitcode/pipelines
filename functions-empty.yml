@@ -1,0 +1,6 @@
+.functions:
+  eval_project_version:
+    - echo "Empty functions 'eval_project_version' stub."
+
+  verify_project_version_against_tag:
+    - echo "Empty functions 'verify_project_version_against_tag' stub."

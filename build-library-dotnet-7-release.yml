@@ -1,0 +1,20 @@
+variables:
+  # Ability to override build image
+  BUILD_LIBRARY_RELEASE_DOTNET_7_IMAGE: ${DOTNET_7_IMAGE}
+
+release:tag:build:
+  stage: build
+  only:
+    - tags
+  image: ${BUILD_LIBRARY_RELEASE_DOTNET_7_IMAGE}
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.functions, verify_project_version_against_tag]
+    - CSPROJ_DIR_NAME=$(dirname $(readlink -f "${CSPROJ_FILE_NAME}"))
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - dotnet build --configuration release "${CSPROJ_FILE_NAME}"
+    - mkdir artifacts && mv "${CSPROJ_DIR_NAME}/bin/release/${LIBRARY_NAME}.${PROJECT_VERSION}.nupkg" "artifacts/${LIBRARY_NAME}.${PROJECT_VERSION}.nupkg"
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day

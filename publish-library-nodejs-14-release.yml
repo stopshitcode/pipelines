@@ -1,0 +1,23 @@
+variables:
+  # Ability to override publish image
+  PUBLISH_LIBRARY_NODE_14_IMAGE: ${NODE_14_IMAGE}
+
+release:tag:publish:
+  stage: publish
+  only:
+    - tags
+  image: ${PUBLISH_LIBRARY_NODE_14_IMAGE}
+  dependencies:
+    - release:tag:build
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.imgaddons, install_jq]
+    - !reference [.functions, eval_project_version]
+    - LIBRARY_NAME=$(jq --raw-output '.name' package.json)
+    - NPM_PACK_NORMALIZED_LIBRARY_NAME=$(echo "${LIBRARY_NAME}" | sed 's/@//g' | sed 's/\//-/g')
+    - test -n "${NPM_REGISTRY_RELEASE_URL}" || (echo "NPM_REGISTRY_RELEASE_URL variable is not set. Please define it at your project/group level" >&2; exit 1)
+    - test -n "${NPM_REGISTRY_RELEASE_API_KEY}" || (echo "NPM_REGISTRY_RELEASE_API_KEY variable is not set. Please define it at your project/group level" >&2; exit 1)
+    - echo "registry=https:${NPM_REGISTRY_RELEASE_URL}" >> .npmrc
+    - test -n "${NPM_REGISTRY_RELEASE_CA}" && echo "ca[]=\"${NPM_REGISTRY_RELEASE_CA}\"" >> .npmrc
+    - echo "${NPM_REGISTRY_RELEASE_URL}:_authToken=${NPM_REGISTRY_RELEASE_API_KEY}" >> .npmrc
+    - cd artifacts && npm publish "${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}.tgz"

@@ -1,0 +1,22 @@
+evolution:snapshot:deploy:
+  stage: deploy
+  only:
+    - branches
+  dependencies:
+    - snapshot:branch:build
+  when: manual
+  image:
+    name: bitnami/kubectl:1.16.15
+    entrypoint: [""]
+  script:
+    - export DOCKER_IMAGE_REPOSITORY="${DEV_REGISTRY_HOST}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/snapshot/amd64"
+    - export DEPLOYMENT_NAME="$(echo $CI_PROJECT_NAMESPACE | cut -c $(echo -n $CI_PROJECT_ROOT_NAMESPACE | wc -c)- | cut -c 2- | sed 's/\///g')$(echo $CI_PROJECT_NAME | sed 's/-//g')"
+    - export VERSION_TAG_CURRENT="${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}"
+    - export KUBECONFIG=/tmp/.kube-config
+    - echo "$KUBECONF_BASE64" | base64 -d > "${KUBECONFIG}"
+    - IMAGE="${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_CURRENT}"
+    - echo "Update 'deployment/blue-${DEPLOYMENT_NAME}' image in namespace '${CI_PROJECT_ROOT_NAMESPACE}-evolution' to '${IMAGE}'"
+    - kubectl --namespace "${CI_PROJECT_ROOT_NAMESPACE}-evolution" --context=evolution set image "deployment/blue-${DEPLOYMENT_NAME}" "${DEPLOYMENT_NAME}=${IMAGE}"
+  environment:
+    name: evolution
+    url: https://evolution-${CI_PROJECT_ROOT_NAMESPACE}.dev.kube

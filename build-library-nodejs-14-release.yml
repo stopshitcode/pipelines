@@ -1,0 +1,24 @@
+variables:
+  # Ability to override build image
+  BUILD_LIBRARY_RELEASE_NODE_14_IMAGE: ${NODE_14_IMAGE}
+
+release:tag:build:
+  stage: build
+  only:
+    - tags
+  image: ${BUILD_LIBRARY_RELEASE_NODE_14_IMAGE}
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.imgaddons, install_jq]
+    - !reference [.functions, eval_project_version]
+    - !reference [.functions, verify_project_version_against_tag]
+    - LIBRARY_NAME=$(jq --raw-output '.name' package.json)
+    - npm install --no-progress
+    - npm run build
+    - npm pack
+    - NPM_PACK_NORMALIZED_LIBRARY_NAME=$(echo "${LIBRARY_NAME}" | sed 's/@//g' | sed 's/\//-/g')
+    - mkdir artifacts && mv "${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}.tgz"  "artifacts/${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}.tgz"
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day

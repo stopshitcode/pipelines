@@ -1,0 +1,10 @@
+.functions:
+  eval_project_version:
+    - if [ ! -f MANIFEST ]; then echo "MANIFEST file not found in repository root" >&2; exit 127; fi;
+    - PROJECT_VERSION=$(cat MANIFEST | grep -ve '^#' | grep '^VERSION:' | cut -d':' -f2 | tr -d '[:space:]')
+
+  verify_project_version_against_tag:
+    - if [ -z "${CI_COMMIT_TAG}" ]; then echo "The function verify_project_version_against_tag() blocks this build. Variable CI_COMMIT_TAG is not set." >&2; exit 127; fi;
+    - !reference [.functions, eval_project_version]
+    - EXPECTED_VERSION=$(echo "${CI_COMMIT_TAG}" | cut -d- -f1)
+    - if [ "$PROJECT_VERSION" != "$EXPECTED_VERSION" ]; then echo "The function verify_project_version_against_tag() blocks this build. Project version '${PROJECT_VERSION}' is not same as tag version '${CI_COMMIT_TAG}'" >&2; exit 255; fi;

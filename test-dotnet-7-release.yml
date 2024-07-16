@@ -1,0 +1,22 @@
+variables:
+  # Ability to override build image
+  TEST_DOTNET_7_IMAGE: ${DOTNET_7_IMAGE}
+
+release:tag:test:dotnet7:
+  stage: test
+  only:
+    - tags
+  image: ${TEST_DOTNET_7_IMAGE}
+  dependencies:
+    - release:tag:build
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - 'dotnet test --configuration release --test-adapter-path:. --logger:"junit;LogFilePath=../artifacts/{assembly}-test-result.xml;MethodFormat=Class;FailureBodyFormat=Verbose"'
+  artifacts:
+    when: always
+    paths:
+      - ./**/*test-result.xml
+    reports:
+      junit:
+        - ./**/*test-result.xml
+    expire_in: 1 day

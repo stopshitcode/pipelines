@@ -1,0 +1,4 @@
+variables:
+  NUGET_API_KEY: 11223344
+  NUGET_SOURCE_RELEASE: https://nuget-infra-cexpay.dev.kube/v3/index.json
+  NUGET_SOURCE_SNAPSHOT: https://nuget-infra-cexpay.dev.kube/v3/index.json

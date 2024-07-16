@@ -1,0 +1,105 @@
+snapshot-mockup:branch:build:amd64:
+  stage: build
+  only:
+    refs:
+      - branches
+  except:
+    variables:
+      - $DOCKER_BUILD_OMIT_AMD64 == "yes"
+  image:
+    name: ${BUILD_IMAGE}
+  script:
+    # Login to DockerHub registry with global credendials provided by IT team
+    - echo "Login to DockerHub"
+    - echo "${DOCKERHUB_PASSWORD}" | docker login --username "${DOCKERHUB_USER}" --password-stdin
+    # Login to DEV registry
+    - mkdir -p "/etc/docker/certs.d/${DEV_REGISTRY_HOST}"
+    - echo "${DEV_REGISTRY_CA}" > "/etc/docker/certs.d/${DEV_REGISTRY_HOST}/ca.crt"
+    - echo "${DEV_REGISTRY_PASSWORD}" | docker login --username "${DEV_REGISTRY_USER}" --password-stdin "${DEV_REGISTRY_HOST}"
+    # Build an image
+    - export VERSION_TAG_CURRENT="${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}"
+    - export VERSION_TAG_LATEST="${CI_COMMIT_REF_SLUG}"
+    - docker build ${DOCKER_ARGS} --file "${DOCKER_FILE_PATH}"
+      --platform=linux/amd64
+      --tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}"
+      --build-arg BUILD_CONFIGURATION=snapshot-mockup
+      --build-arg CI_COMMIT_REF_NAME
+      --build-arg CI_COMMIT_SHORT_SHA
+      --build-arg CI_JOB_URL
+      --build-arg CI_PROJECT_URL
+      --build-arg CI_COMMIT_TIMESTAMP
+      ${DOCKER_BUILD_CONTEXT_PATH}
+    # Make image tags
+    - export DOCKER_IMAGE_REPOSITORY="${DEV_REGISTRY_HOST}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/snapshot-mockup/amd64"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_CURRENT}"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_LATEST}"
+    # Publish tags
+    - docker push "${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_CURRENT}"
+    - docker push "${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_LATEST}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_CURRENT}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_LATEST}"
+
+snapshot-mockup:branch:build:arm64v8:
+  stage: build
+  only:
+    refs:
+      - branches
+  except:
+    variables:
+      - $DOCKER_BUILD_OMIT_ARM64V8 == "yes"
+  tags:
+    - docker-builder
+    - docker-platform-support
+  image:
+    name: ${BUILD_IMAGE}
+  script:
+    # Login to DockerHub registry with global credentials provided by IT team
+    - echo "Login to DockerHub"
+    - echo "${DOCKERHUB_PASSWORD}" | docker login --username "${DOCKERHUB_USER}" --password-stdin
+    # Login to DEV registry
+    - mkdir -p "/etc/docker/certs.d/${DEV_REGISTRY_HOST}"
+    - echo "${DEV_REGISTRY_CA}" > "/etc/docker/certs.d/${DEV_REGISTRY_HOST}/ca.crt"
+    - echo "${DEV_REGISTRY_PASSWORD}" | docker login --username "${DEV_REGISTRY_USER}" --password-stdin "${DEV_REGISTRY_HOST}"
+    # Build an image
+    - export VERSION_TAG_CURRENT="${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}"
+    - export VERSION_TAG_LATEST="${CI_COMMIT_REF_SLUG}"
+    - docker build ${DOCKER_ARGS} --file "${DOCKER_FILE_PATH}"
+      --platform=linux/arm64/v8
+      --tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}"
+      --build-arg BUILD_CONFIGURATION=snapshot-mockup
+      --build-arg CI_COMMIT_REF_NAME
+      --build-arg CI_COMMIT_SHORT_SHA
+      --build-arg CI_JOB_URL
+      --build-arg CI_PROJECT_URL
+      --build-arg CI_COMMIT_TIMESTAMP
+      ${DOCKER_BUILD_CONTEXT_PATH}
+    # Make image tags
+    - export DOCKER_IMAGE_REPOSITORY="${DEV_REGISTRY_HOST}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/snapshot-mockup/arm64v8"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_CURRENT}"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_LATEST}"
+    # Publish tags
+    - docker push "${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_CURRENT}"
+    - docker push "${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_LATEST}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_CURRENT}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY}:${VERSION_TAG_LATEST}"
+
+snapshot-mockup:branch:build:
+  stage: manifest
+  only:
+    refs:
+      - branches
+  except:
+    variables:
+      - $DOCKER_BUILD_OMIT_MANIFEST == "yes"
+  tags:
+    - docker-builder
+    - docker-platform-support
+  dependencies:
+    - snapshot-mockup:branch:build:amd64
+    - snapshot-mockup:branch:build:arm64v8
+  image:
+    name: ${BUILD_IMAGE}
+  allow_failure: true
+  script:
+    - echo "Not implemented yet" >&2
+    - exit 1

@@ -1,0 +1,46 @@
+variables:
+  # Ability to override build image
+  BUILD_LIBRARY_SNAPSHOT_NODE_14_IMAGE: ${NODE_14_IMAGE}
+
+snapshot:branch:build:
+  stage: build
+  only:
+    - branches
+  image: ${BUILD_LIBRARY_SNAPSHOT_NODE_14_IMAGE}
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.imgaddons, install_jq]
+    - !reference [.functions, eval_project_version]
+    - LIBRARY_NAME=$(jq --raw-output '.name' package.json)
+    - npm version "${PROJECT_VERSION}-snapshot-${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}"
+    - npm install --no-progress
+    - npm run build
+    - npm pack
+    - NPM_PACK_NORMALIZED_LIBRARY_NAME=$(echo "${LIBRARY_NAME}" | sed 's/@//g' | sed 's/\//-/g')
+    - mkdir artifacts && mv "${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}-snapshot-${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}.tgz" "artifacts/${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}-snapshot-${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}.tgz"
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day
+
+snapshot:tag:build:
+  stage: build
+  only:
+    - tags
+  image: ${BUILD_LIBRARY_SNAPSHOT_NODE_14_IMAGE}
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.imgaddons, install_jq]
+    - !reference [.functions, eval_project_version]
+    - !reference [.functions, verify_project_version_against_tag]
+    - LIBRARY_NAME=$(jq --raw-output '.name' package.json)
+    - npm version "${PROJECT_VERSION}-snapshot"
+    - npm install --no-progress
+    - npm run build
+    - npm pack
+    - NPM_PACK_NORMALIZED_LIBRARY_NAME=$(echo "${LIBRARY_NAME}" | sed 's/@//g' | sed 's/\//-/g')
+    - mkdir artifacts && mv "${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}-snapshot.tgz"  "artifacts/${NPM_PACK_NORMALIZED_LIBRARY_NAME}-${PROJECT_VERSION}-snapshot.tgz"
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day

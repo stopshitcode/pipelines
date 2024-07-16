@@ -1,0 +1,140 @@
+# amd64 сборка в режиме release из тега. Используется как история артифактов и воспроизведения багов в конкретных версиях.
+# эта сборка используется в Production Kubernetes
+release:tag:build:amd64:
+  stage: build
+  only:
+    refs:
+      - tags
+  except:
+    variables:
+      - $DOCKER_BUILD_OMIT_AMD64 == "yes"
+      - $CI_COMMIT_TAG =~ /^.*-rc\d+$/
+  image:
+    name: ${BUILD_IMAGE}
+  script:
+    - !reference [.functions, verify_project_version_against_tag]
+    # Login to DockerHub registry with global credendials provided by IT team
+    - echo "Login to DockerHub"
+    - echo "${DOCKERHUB_PASSWORD}" | docker login --username "${DOCKERHUB_USER}" --password-stdin
+    # Login to DEV registry
+    - mkdir -p "/etc/docker/certs.d/${DEV_REGISTRY_HOST}"
+    - echo "${DEV_REGISTRY_CA}" > "/etc/docker/certs.d/${DEV_REGISTRY_HOST}/ca.crt"
+    - echo "${DEV_REGISTRY_PASSWORD}" | docker login --username "${DEV_REGISTRY_USER}" --password-stdin "${DEV_REGISTRY_HOST}"
+    # Login to PROD registry
+    - mkdir -p "/etc/docker/certs.d/$RELEASE_REGISTRY_HOST"
+    - echo "${RELEASE_REGISTRY_CA}" > "/etc/docker/certs.d/${RELEASE_REGISTRY_HOST}/ca.crt"
+    - echo "${RELEASE_REGISTRY_PASSWORD}" | docker login --username "${RELEASE_REGISTRY_USER}" --password-stdin "${RELEASE_REGISTRY_HOST}"
+    # Build an image
+    - export VERSION_TAG_CURRENT="${CI_COMMIT_TAG}"
+    - export VERSION_TAG_LATEST="latest"
+    - docker build ${DOCKER_ARGS} --file "${DOCKER_FILE_PATH}"
+      --platform=linux/amd64
+      --tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}"
+      --build-arg BUILD_CONFIGURATION=release
+      --build-arg CI_COMMIT_REF_NAME
+      --build-arg CI_COMMIT_TAG
+      --build-arg CI_COMMIT_SHORT_SHA
+      --build-arg CI_JOB_URL
+      --build-arg CI_PROJECT_URL
+      --build-arg CI_COMMIT_TIMESTAMP
+      ${DOCKER_BUILD_ADDITIONAL_OPTS}
+      ${DOCKER_BUILD_CONTEXT_PATH}
+    # Make image tags
+    - export DOCKER_IMAGE_REPOSITORY_DEV="${DEV_REGISTRY_HOST}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/amd64"
+    - export DOCKER_IMAGE_REPOSITORY_PROD="${RELEASE_REGISTRY_HOST}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/amd64"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_CURRENT}"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_LATEST}"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_CURRENT}"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_LATEST}"
+    # Publish tags
+    - docker push "${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_CURRENT}"
+    - docker push "${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_LATEST}"
+    - docker push "${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_CURRENT}"
+    - docker push "${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_LATEST}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_CURRENT}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_LATEST}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_CURRENT}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_LATEST}"
+
+# arm64 сборка в режиме release из тега. Используется как история артифактов и воспроизведения багов в конкретных версиях.
+# эта сборка используется в локальном окружении разработчика на MacBook Air (Apple Sillicon) и как следствие не публикуется в продуктивный репозиторий Docker образов
+release:tag:build:arm64v8:
+  stage: build
+  only:
+    refs:
+      - tags
+  except:
+    variables:
+      - $DOCKER_BUILD_OMIT_ARM64V8 == "yes"
+      - $CI_COMMIT_TAG =~ /^.*-rc\d+$/
+  tags:
+    - docker-builder
+    - docker-platform-support
+  image:
+    name: ${BUILD_IMAGE}
+  script:
+    - !reference [.functions, verify_project_version_against_tag]
+    # Login to DockerHub registry with global credendials provided by IT team
+    - echo "Login to DockerHub"
+    - echo "${DOCKERHUB_PASSWORD}" | docker login --username "${DOCKERHUB_USER}" --password-stdin
+    # Login to DEV registry
+    - mkdir -p "/etc/docker/certs.d/${DEV_REGISTRY_HOST}"
+    - echo "${DEV_REGISTRY_CA}" > "/etc/docker/certs.d/${DEV_REGISTRY_HOST}/ca.crt"
+    - echo "${DEV_REGISTRY_PASSWORD}" | docker login --username "${DEV_REGISTRY_USER}" --password-stdin "${DEV_REGISTRY_HOST}"
+    # # Login to PROD registry
+    # - mkdir -p "/etc/docker/certs.d/$RELEASE_REGISTRY_HOST"
+    # - echo "${RELEASE_REGISTRY_CA}" > "/etc/docker/certs.d/${RELEASE_REGISTRY_HOST}/ca.crt"
+    # - echo "${RELEASE_REGISTRY_PASSWORD}" | docker login --username "${RELEASE_REGISTRY_USER}" --password-stdin "${RELEASE_REGISTRY_HOST}"
+    # Build an image
+    - export VERSION_TAG_CURRENT="${CI_COMMIT_TAG}"
+    - export VERSION_TAG_LATEST="latest"
+    - docker build ${DOCKER_ARGS} --file "${DOCKER_FILE_PATH}"
+      --platform=linux/arm64/v8
+      --tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}"
+      --build-arg BUILD_CONFIGURATION=release
+      --build-arg CI_COMMIT_REF_NAME
+      --build-arg CI_COMMIT_TAG
+      --build-arg CI_COMMIT_SHORT_SHA
+      --build-arg CI_JOB_URL
+      --build-arg CI_PROJECT_URL
+      --build-arg CI_COMMIT_TIMESTAMP
+      ${DOCKER_BUILD_ADDITIONAL_OPTS}
+      ${DOCKER_BUILD_CONTEXT_PATH}
+    # Make image tags
+    - export DOCKER_IMAGE_REPOSITORY_DEV="${DEV_REGISTRY_HOST}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/arm64v8"
+    # - export DOCKER_IMAGE_REPOSITORY_PROD="${RELEASE_REGISTRY_HOST}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/arm64v8"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_CURRENT}"
+    - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_LATEST}"
+    # - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_CURRENT}"
+    # - docker tag "image-${CI_PROJECT_NAMESPACE}-${CI_PROJECT_NAME}-${CI_JOB_ID}" "${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_LATEST}"
+    # Publish tags
+    - docker push "${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_CURRENT}"
+    - docker push "${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_LATEST}"
+    # - docker push "${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_CURRENT}"
+    # - docker push "${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_LATEST}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_CURRENT}"
+    - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY_DEV}:${VERSION_TAG_LATEST}"
+    # - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_CURRENT}"
+    # - echo "See README.md for 'docker run' command. The image ${DOCKER_IMAGE_REPOSITORY_PROD}:${VERSION_TAG_LATEST}"
+
+release:tag:build:
+  stage: manifest
+  only:
+    refs:
+      - tags
+  except:
+    variables:
+      - $DOCKER_BUILD_OMIT_MANIFEST == "yes"
+      - $CI_COMMIT_TAG =~ /^.*-rc\d+$/
+  tags:
+    - docker-builder
+    - docker-platform-support
+  dependencies:
+    - release:tag:build:amd64
+    - release:tag:build:arm64v8
+  image:
+    name: ${BUILD_IMAGE}
+  allow_failure: true
+  script:
+    - echo "Not implemented yet" >&2
+    - exit 1

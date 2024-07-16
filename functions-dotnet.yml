@@ -1,0 +1,25 @@
+variables:
+  # https://hub.docker.com/_/microsoft-dotnet-sdk?tab=description
+  DOTNET_5_IMAGE: mcr.microsoft.com/dotnet/sdk:5.0.408-alpine3.14
+  DOTNET_6_IMAGE: mcr.microsoft.com/dotnet/sdk:6.0.301-alpine3.15
+  DOTNET_7_IMAGE: mcr.microsoft.com/dotnet/sdk:7.0.100-preview.5-1-alpine3.16
+  MONO_IMAGE: mono:6.12.0.122
+
+.functions:
+  eval_project_version_tag:
+    - if [ -z "${CI_COMMIT_TAG}" ]; then echo "The function eval_project_version_tag() blocks this build. Variable CI_COMMIT_TAG is not set." >&2; exit 127; fi;
+    - PROJECT_VERSION=${CI_COMMIT_TAG}
+    - PROJECT_VERSION_SUFFIX=$(echo "${CI_COMMIT_TAG}" | cut -sd- -f2-)
+    - if [ ! -z "$PROJECT_VERSION_SUFFIX" ]; then PROJECT_VERSION_SUFFIX="-$PROJECT_VERSION_SUFFIX"; fi;
+
+  eval_project_version:
+    - if [ ! -f "Directory.Build.props" ]; then echo "The function eval_project_version() blocks this build. A file Directory.Build.props not is not found in project root ." >&2; exit 127; fi;
+    - !reference [.imgaddons, install_xmllint]
+    - PROJECT_VERSION=$(xmllint --xpath "/Project/PropertyGroup/Version/text()" "Directory.Build.props")
+  
+  verify_project_version_against_tag:
+    - !reference [.functions, eval_project_version_tag]
+    - EXPECTED_VERSION=${PROJECT_VERSION}
+    - !reference [.functions, eval_project_version]
+    - if [[ "$EXPECTED_VERSION" != "$PROJECT_VERSION"* ]]; then echo "The function verify_project_version_against_tag() blocks this build. Tag version '${EXPECTED_VERSION}' doesn't start with project version '${PROJECT_VERSION}'" >&2; exit 255; fi;
+    - PROJECT_VERSION=${EXPECTED_VERSION}

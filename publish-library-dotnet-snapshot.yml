@@ -1,0 +1,29 @@
+variables:
+  # Ability to override publish image
+  PUBLISH_LIBRARY_DOTNET_6_IMAGE: ${DOTNET_6_IMAGE}
+
+snapshot:branch:publish:
+  stage: publish
+  only:
+    - branches
+  image: ${PUBLISH_LIBRARY_DOTNET_6_IMAGE}
+  dependencies:
+    - snapshot:branch:build
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.functions, eval_project_version]
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - dotnet nuget push --source "${NUGET_SOURCE_SNAPSHOT}" --api-key "${NUGET_API_KEY}" "artifacts/${LIBRARY_NAME}.${PROJECT_VERSION}-snapshot-${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}.nupkg"
+
+snapshot:tag:publish:
+  stage: publish
+  only:
+    - tags
+  image: ${PUBLISH_LIBRARY_DOTNET_6_IMAGE}
+  dependencies:
+    - snapshot:tag:build
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.functions, eval_project_version_tag]
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - dotnet nuget push --source "${NUGET_SOURCE_SNAPSHOT}" --api-key "${NUGET_API_KEY}" "artifacts/${LIBRARY_NAME}.${PROJECT_VERSION}-snapshot.nupkg"

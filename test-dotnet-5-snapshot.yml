@@ -1,0 +1,41 @@
+variables:
+  # Ability to override build image
+  TEST_DOTNET_5_IMAGE: ${DOTNET_5_IMAGE}
+
+snapshot:branch:test:dotnet5:
+  stage: test
+  only:
+    - branches
+  image: ${TEST_DOTNET_5_IMAGE}
+  dependencies:
+    - snapshot:branch:build
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - 'dotnet test --configuration snapshot --test-adapter-path:. --logger:"junit;LogFilePath=../artifacts/{assembly}-test-result.xml;MethodFormat=Class;FailureBodyFormat=Verbose"'
+  artifacts:
+    when: always
+    paths:
+      - ./**/*test-result.xml
+    reports:
+      junit:
+        - ./**/*test-result.xml
+    expire_in: 1 day
+
+snapshot:tag:test:dotnet5:
+  stage: test
+  only:
+    - tags
+  image: ${TEST_DOTNET_5_IMAGE}
+  dependencies:
+    - snapshot:tag:build
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - 'dotnet test --configuration snapshot --test-adapter-path:. --logger:"junit;LogFilePath=../artifacts/{assembly}-test-result.xml;MethodFormat=Class;FailureBodyFormat=Verbose"'
+  artifacts:
+    when: always
+    paths:
+      - ./**/*test-result.xml
+    reports:
+      junit:
+        - ./**/*test-result.xml
+    expire_in: 1 day

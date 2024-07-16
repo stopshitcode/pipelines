@@ -1,0 +1,10 @@
+variables:
+  NPM_REGISTRY_RELEASE_API_KEY: ""
+  # NPM_REGISTRY_RELEASE_URL: "//registry.npmjs.org/"
+  # NPM_REGISTRY_RELEASE_URL: "//nexus.infra.kube/repository/npm-hosted/"
+  NPM_REGISTRY_RELEASE_URL: ""
+  NPM_REGISTRY_RELEASE_CA: ""
+  NPM_REGISTRY_SNAPSHOT_API_KEY: ""
+  # NPM_REGISTRY_SNAPSHOT_URL: "//nexus.infra.kube/repository/npm-hosted/"
+  NPM_REGISTRY_SNAPSHOT_URL: ""
+  NPM_REGISTRY_SNAPSHOT_CA: ""

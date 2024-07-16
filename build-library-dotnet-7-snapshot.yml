@@ -1,0 +1,37 @@
+variables:
+  # Ability to override build image
+  BUILD_LIBRARY_SNAPSHOT_DOTNET_7_IMAGE: ${DOTNET_7_IMAGE}
+
+snapshot:branch:build:
+  stage: build
+  only:
+    - branches
+  image: ${BUILD_LIBRARY_SNAPSHOT_DOTNET_7_IMAGE}
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.functions, eval_project_version]
+    - CSPROJ_DIR_NAME=$(dirname $(readlink -f "${CSPROJ_FILE_NAME}"))
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - dotnet build --configuration snapshot /property:Version=${PROJECT_VERSION}-snapshot-${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA} "${CSPROJ_FILE_NAME}"
+    - mkdir artifacts && mv "${CSPROJ_DIR_NAME}/bin/snapshot/${LIBRARY_NAME}.${PROJECT_VERSION}-snapshot-${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}.nupkg" "artifacts/${LIBRARY_NAME}.${PROJECT_VERSION}-snapshot-${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHORT_SHA}.nupkg"
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day
+
+snapshot:tag:build:
+  stage: build
+  only:
+    - tags
+  image: ${BUILD_LIBRARY_SNAPSHOT_DOTNET_7_IMAGE}
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.functions, verify_project_version_against_tag]
+    - CSPROJ_DIR_NAME=$(dirname $(readlink -f "${CSPROJ_FILE_NAME}"))
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - dotnet build --configuration snapshot /property:Version=${PROJECT_VERSION}-snapshot "${CSPROJ_FILE_NAME}"
+    - mkdir artifacts && mv "${CSPROJ_DIR_NAME}/bin/snapshot/${LIBRARY_NAME}.${PROJECT_VERSION}-snapshot.nupkg" "artifacts/${LIBRARY_NAME}.${PROJECT_VERSION}-snapshot.nupkg"
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day

@@ -1,0 +1,123 @@
+variables:
+  # Ability to override build image
+  BUILD_LIBRARY_RELEASE_DOTNET_5_IMAGE: ${DOTNET_5_IMAGE}
+  BUILD_LIBRARY_RELEASE_DOTNET_6_IMAGE: ${DOTNET_6_IMAGE}
+  BUILD_LIBRARY_RELEASE_DOTNET_7_IMAGE: ${DOTNET_7_IMAGE}
+
+release:tag:build:dotnet5:
+  stage: build-variants
+  only:
+    - tags
+  image: ${BUILD_LIBRARY_RELEASE_DOTNET_5_IMAGE}
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.functions, verify_project_version_against_tag]
+    - CSPROJ_DIR_NAME=$(dirname $(readlink -f "${CSPROJ_FILE_NAME}"))
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - dotnet build --configuration release /property:Version=${PROJECT_VERSION} "${CSPROJ_FILE_NAME}"
+    - mkdir -p artifacts/bin/release/net5.0
+    - mv "${CSPROJ_DIR_NAME}/bin/release/net5.0/${LIBRARY_NAME}.dll" "${CSPROJ_DIR_NAME}/bin/release/net5.0/${LIBRARY_NAME}.xml" "artifacts/bin/release/net5.0"
+    - if [ -d "${CSPROJ_DIR_NAME}/bin/release/net5.0/wwwroot" ]; then mkdir -p "artifacts/bin/release/net5.0/wwwroot" && mv "${CSPROJ_DIR_NAME}/bin/release/net5.0/wwwroot"/* "artifacts/bin/release/net5.0/wwwroot"; fi
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day
+
+release:tag:build:dotnet6:
+  stage: build-variants
+  only:
+    - tags
+  image: ${BUILD_LIBRARY_RELEASE_DOTNET_6_IMAGE}
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.functions, verify_project_version_against_tag]
+    - CSPROJ_DIR_NAME=$(dirname $(readlink -f "${CSPROJ_FILE_NAME}"))
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - dotnet build --configuration release /property:Version=${PROJECT_VERSION} "${CSPROJ_FILE_NAME}"
+    - mkdir -p artifacts/bin/release/net6.0
+    - mv "${CSPROJ_DIR_NAME}/bin/release/net6.0/${LIBRARY_NAME}.dll" "${CSPROJ_DIR_NAME}/bin/release/net6.0/${LIBRARY_NAME}.xml" "artifacts/bin/release/net6.0"
+    - if [ -d "${CSPROJ_DIR_NAME}/bin/release/net6.0/wwwroot" ]; then mkdir -p "artifacts/bin/release/net6.0/wwwroot" && mv "${CSPROJ_DIR_NAME}/bin/release/net6.0/wwwroot"/* "artifacts/bin/release/net6.0/wwwroot"; fi
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day
+
+release:tag:build:dotnet7:
+  stage: build-variants
+  only:
+    - tags
+  image: ${BUILD_LIBRARY_RELEASE_DOTNET_7_IMAGE}
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.functions, verify_project_version_against_tag]
+    - CSPROJ_DIR_NAME=$(dirname $(readlink -f "${CSPROJ_FILE_NAME}"))
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - dotnet build --configuration release /property:Version=${PROJECT_VERSION} "${CSPROJ_FILE_NAME}"
+    - mkdir -p artifacts/bin/release/net7.0
+    - mv "${CSPROJ_DIR_NAME}/bin/release/net7.0/${LIBRARY_NAME}.dll" "${CSPROJ_DIR_NAME}/bin/release/net7.0/${LIBRARY_NAME}.xml" "artifacts/bin/release/net7.0"
+    - if [ -d "${CSPROJ_DIR_NAME}/bin/release/net7.0/wwwroot" ]; then mkdir -p "artifacts/bin/release/net7.0/wwwroot" && mv "${CSPROJ_DIR_NAME}/bin/release/net7.0/wwwroot"/* "artifacts/bin/release/net7.0/wwwroot"; fi
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day
+
+release:tag:build:
+  stage: build
+  only:
+    - tags
+  image: ${MONO_IMAGE}
+  dependencies:
+    - release:tag:build:dotnet5
+    - release:tag:build:dotnet6
+    - release:tag:build:dotnet7
+  script:
+    - !reference [.imgaddons, install_xsltproc]
+    - !reference [.functions, eval_project_version_tag]
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - xsltproc --stringparam version-suffix "${PROJECT_VERSION_SUFFIX}" "${LIBRARY_NAME}.nuspec.xslt" <(echo '<stub/>') | tee "${LIBRARY_NAME}.nuspec"
+    - mkdir -p lib/net7.0 lib/net6.0 lib/net5.0
+    - mv "artifacts/bin/release/net7.0"/* "lib/net7.0"
+    - mv "artifacts/bin/release/net6.0"/* "lib/net6.0"
+    - mv "artifacts/bin/release/net5.0"/* "lib/net5.0"
+    - nuget pack "${LIBRARY_NAME}.nuspec"
+    - mv "${LIBRARY_NAME}.${PROJECT_VERSION}.nupkg" "artifacts/"
+    - rm -r "artifacts/bin"
+  artifacts:
+    paths:
+      - artifacts/
+    expire_in: 1 day
+
+# # Build Nuget Package via Nuke
+# release:tag:build:
+#   stage: build
+#   only:
+#     - tags
+#   image: ${MONO_IMAGE}
+#   dependencies:
+#     - release:tag:build:dotnet5
+#     - release:tag:build:dotnet6
+#     - release:tag:build:dotnet7
+#   script:
+#     - !reference [.imgaddons, use_ca_infrawnb]
+#     - !reference [.functions, eval_project_version]
+#     - CSPROJ_DIR_NAME=$(dirname $(readlink -f "${CSPROJ_FILE_NAME}"))
+#     - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+#     - mkdir -p "${CSPROJ_DIR_NAME}/bin/net5.0" && mkdir -p "${CSPROJ_DIR_NAME}/bin/net6.0" && mkdir -p "${CSPROJ_DIR_NAME}/bin/net7.0"
+#     - mv "artifacts/bin/release/net7.0/${LIBRARY_NAME}.dll" "artifacts/bin/release/net7.0/${LIBRARY_NAME}.xml" "${CSPROJ_DIR_NAME}/bin/net7.0"
+#     - mv "artifacts/bin/release/net6.0/${LIBRARY_NAME}.dll" "artifacts/bin/release/net6.0/${LIBRARY_NAME}.xml" "${CSPROJ_DIR_NAME}/bin/net6.0"
+#     - mv "artifacts/bin/release/net5.0/${LIBRARY_NAME}.dll" "artifacts/bin/release/net5.0/${LIBRARY_NAME}.xml" "${CSPROJ_DIR_NAME}/bin/net5.0"
+#     - rm -r "artifacts/bin"
+#     - ./build.sh GenerateNuspecFile PackToNupkgFile
+#       --build-configuration release
+#       --build-target tag
+#       --ci_commit_ref_slug ${CI_COMMIT_REF_SLUG}
+#       --ci_commit_short_sha ${CI_COMMIT_SHORT_SHA}
+#       --project-name ${LIBRARY_NAME}
+#       --no-logo
+#     - mv "${CSPROJ_DIR_NAME}/../${LIBRARY_NAME}.${PROJECT_VERSION}.nupkg" "artifacts/"
+#     - echo "Signing the package..."
+#     # TODO
+#   artifacts:
+#     paths:
+#       - artifacts/
+#     expire_in: 1 day

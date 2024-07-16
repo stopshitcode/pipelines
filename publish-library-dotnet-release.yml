@@ -1,0 +1,17 @@
+variables:
+  # Ability to override publish image
+  PUBLISH_LIBRARY_DOTNET_6_IMAGE: ${DOTNET_6_IMAGE}
+
+release:tag:publish:
+  stage: publish
+  only:
+    - tags
+  image: ${PUBLISH_LIBRARY_DOTNET_6_IMAGE}
+  dependencies:
+    - release:tag:build
+  script:
+    - !reference [.imgaddons, use_ca_infrawnb]
+    - !reference [.functions, verify_project_version_against_tag]
+    - PROJECT_ROOT_NAMESPACE=$(xmllint --xpath "/Project/PropertyGroup/RootNamespace/text()" "${CSPROJ_FILE_NAME}")
+    - LIBRARY_NAME=$(basename "${CSPROJ_FILE_NAME}" .csproj)
+    - dotnet nuget push --source "${NUGET_SOURCE_RELEASE}" --api-key "${NUGET_API_KEY}" "artifacts/${PROJECT_ROOT_NAMESPACE}.${PROJECT_VERSION}.nupkg"
